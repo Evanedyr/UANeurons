@@ -1,3 +1,13 @@
+COMMENT
+  This .mod file introduces a pointprocess for current clamp made with sinusoidal noisy signal.
+  To use, on linux, you have to locate it in the same folder as the .py file you're running, and run nrnivmodl before
+  running the actual script. Doing this will create a x86_64 folder with inside all the compiled (in c) files needed
+  by Neuron to use this point process.
+  To use it in the .py fill, you call it as any other point process:
+    stim = h.IClampNoise(soma(.5))
+  and later you can edit all the PARAMETER fields
+ENDCOMMENT
+
 NEURON {
   POINT_PROCESS IClampNoise
   RANGE i,delay,dur,f0,f1,r,torn,std,bias
