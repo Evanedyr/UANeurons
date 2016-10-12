@@ -1,0 +1,327 @@
+/*
+for the paper:
+Yu Y.G., Shu Y., Duque A., Haider B., and McCormick D.A.                                                                
+Cortical Action Potential Back-propagation Explains Spike Threshold Variability and Rapid-Onset Kinetics.                                  
+Journal of Neuroscience, 28: 7260-7272, (2008).
+
+McCormick D.A., Shu Y., and Yu Y.G.     
+Neurophysiology: Hodgkin and Huxley model - still standing? 
+Nature. 445: E1-E2, (2007).  
+
+Create a single cell containing a dendrite, soma, an axon with 60 micrometer and a axon bleb
+   to investigate generation of spike kink at soma
+   As observed in experiment, spike usually initiated at the axon site 40~70 micrometer away from soma.
+   There is a rapid rising phase in somatic spike, due to the initial segment traveling spike.
+*/
+
+load_file("nrngui.hoc")
+
+// --------------------------------------------------------------
+// redefine some things in stdrun.hoc
+// --------------------------------------------------------------
+objref st, st1
+
+tstart = 0
+tstop = 400
+dt = 0.01/1
+steps_per_ms = 1/dt
+
+// Create the neuron
+rm = 30000
+v_init    = -70
+celsius   = 37
+Ek = -80   //-90 might affect the axon spike phase slope value low, and less noisy, increase to be -85?
+           //   maybe not, still need check
+Ena = 60
+ra = 150  //the larger, the soma kink slope large is
+c_m = 0.75 // the optimal value, both increase and decrease will decrease slope value
+           //however, small C value will have high dv/dt value
+xn = 1
+gna = 8000 //7500
+gk = 1600 //1800
+ndend=1  // increase this will increase kink slope
+//create dend[ndend], soma, axon
+create dend, soma, axon, bleb
+
+gkm = .3// .3   //.3~ 0.5
+gca = .3//.3   //.3~ 0.5
+gkca = .3// 3  //.3~ 0.5
+
+gca_soma = gca
+gkm_soma = gkm
+gkca_soma = gkca
+
+
+  dend {
+         L=3000   //there some optimal length make stronger kink?
+         nseg=L/50    //don't why increase or decrease nseg will decrease slope
+         diam = 5    //sure this is also optimal value; increase this strenth the kink and biphase
+          }
+                
+soma {
+    L=30         //increase size make stronger kink
+    nseg=L/5
+    diam = 20
+}
+
+axon {
+    L=50
+    nseg=L/5
+    //diam=1
+//    diam(0:0.1) = 2:1 // weeken the biphase, but looks closer to the real data
+//    diam(0.1:1) = 1:1 // weeken the biphase, but looks closer to the real data
+    diam=1
+}
+
+
+bleb {
+    nseg=1
+    L=5                 //remove the bleb doesn't changing sth much except increase axon spike 
+                        // phase slope from 2.5 to 4---which is good!
+    diam = 5
+}
+
+soma connect dend(0), 0
+soma connect axon(0), 1
+axon connect bleb(0), 1
+
+//   connect dend(1), soma(0)
+//   connect axon(0), soma(1)
+//   connect bleb(0), axon(1)
+
+proc init_cell() {
+      forall {
+              insert pas
+              Ra = ra
+              cm = c_m
+              g_pas = 1/rm
+              e_pas = v_init
+              }
+              bleb g_pas = 1/rm // 5/rm
+            axon cm=c_m*0.75
+            soma cm=c_m
+            bleb cm = c_m*0.75
+
+      forall insert na             
+             soma.gbar_na = 0.1*gna  //750 //gna/8 // increase this will increase dv/dt amplitude, but weak kink value
+             axon.gbar_na = gna //7500
+             bleb.gbar_na = gna/3 //3000 //gna/3
+             dend.gbar_na = 20 //100 //10 //increase this will make cell has spontaneous spikes.
+      
+      forall insert kv
+             soma.gbar_kv = gk/5 //250 //gk/2 // increase this will increase dv/dt amplitude and weak biphase
+             axon.gbar_kv = gk
+              bleb.gbar_kv = gk/3 //gk/2
+             dend.gbar_kv=10
+             
+           forall {
+            insert km    gbar_km  = 0 //gkm
+	    insert kca   gbar_kca = 0 //gkca
+    	    insert ca    gbar_ca = 0 //gca
+    	    insert cad
+             }
+             axon gbar_km=0
+             bleb gbar_km=0
+             
+             axon gbar_kca=0
+             bleb gbar_kca=0
+             
+             axon gbar_ca=0
+             bleb gbar_ca=0
+              
+      forall if(ismembrane("ca_ion")) {
+               eca = 140
+               ion_style("ca_ion",0,1,0,0,0)
+               vshift_ca = 0
+  }
+             
+   
+      forall if(ismembrane("k_ion")) ek = Ek
+      forall if(ismembrane("na_ion")) {
+                ena = Ena
+                // seems to be necessary for 3d cells to shift Na kinetics -5 mV
+                vshift_na = -6 //-5
+                                      }
+   finitialize(v_init)
+  if (cvode.active()) {
+    cvode.re_init()
+  } else {
+    fcurrent()
+  }
+  frecord_init()    
+}             
+                      
+init_cell()
+nrnmainmenu()
+nrncontrolmenu()
+
+access soma
+proc newplot() { local wd,ht
+    graphItem = new Graph(0)
+   wd=300 ht=200
+    graphItem.save_name("graphList[0].")
+    graphList[0].append(graphItem)
+   // graphItem.view(100,-1,106,90,300,200,wd,ht)
+   graphItem.view(0,-80,tstop,140,300,200,wd,ht)
+  }
+
+proc newplot1() { local wd,ht
+    graphItem = new Graph(0)
+   wd=300 ht=200
+    graphItem.save_name("graphList[0].")
+    graphList[0].append(graphItem)
+   graphItem.view(0,-3.5,tstop,4,300,200,wd,ht)
+  }
+
+newplot1()
+graphItem.addvar("soma.ina(0.5)",1,1)
+graphItem.addvar("axon.ina(0.9)",2,1)
+//graphItem.addvar("bleb.ina(0.5)",3,1)
+
+
+newplot1()
+graphItem.addvar("soma.i_cap(.5)",1,1)
+graphItem.addvar("axon.i_cap(.9)",2,1)
+//graphItem.addvar("bleb.i_cap(.5)",3,1)
+graphItem.addvar("soma.ina(.5)",5,1)
+graphItem.addvar("axon.ina(.9)",6,1)
+
+objectvar scene_vector_[14]
+objectvar save_window_, rvp_
+save_window_ = new Graph(0)
+save_window_.size(-100,200,-80,40)
+scene_vector_[5] = save_window_
+{save_window_.view(-100, -80, 200, 120, 33, 410, 300, 200)}
+flush_list.append(save_window_)
+save_window_.save_name("flush_list.")
+objectvar rvp_
+//rvp_ = new RangeVarPlot("gbar_na")
+//rvp_ = new RangeVarPlot("ina")
+rvp_ = new RangeVarPlot("v")
+dend rvp_.begin(0)
+//bleb rvp_.end(1)
+//soma rvp_.begin(0)
+//bleb rvp_.end(1)
+save_window_.addobject(rvp_, 2, 1, 0.8, 0.9)  //addobject: Adds the RangeVarPlot to the list of items to be plotted on flush
+
+newplot()
+graphItem.addvar("soma.v(.5)",1,1)
+graphItem.addvar("axon.v(.9)",2,1)
+//graphItem.addvar("bleb.v(.5)",3,1)
+
+/*
+//------controlled by Gluct.mod---------------------------------------------------------------
+access soma
+
+objref fl
+fl = new Gfluct2(0.5)
+
+
+fl.g_e0 = 0.0012		// 5 times larger
+fl.g_i0 = 0.0012*5
+
+//fl.std_e = 0.012*0.8		// 4 times larger
+//fl.std_i = 0.0264*0.8
+fl.std_e = 0 //0.012/3		// 4 times larger
+fl.std_i = 0 //0.0264/3
+*/
+
+// --------------------------------------------------------------
+// stimulus
+// --------------------------------------------------------------
+
+  st=new IClamp(.5)
+  st.dur = 5000
+  st.del = 5
+  st.amp = .0
+
+  st1=new IClamp(.5)
+  st1.dur = 5000
+  st1.del = 5
+  st1.amp = .0
+  
+proc set_stim() {
+  st.loc($1)  st.amp = $2   st.del = $3   st.dur = $4
+}
+
+proc set_stim1() {
+  st1.loc($1)  st1.amp = $2   st1.del = $3   st1.dur = $4
+}
+
+objref rect, recv, rec_somaic, rec_axonv, rec_blebv
+objref rec_axon1, rec_axon2, rec_axon3, rec_axon4, rec_axon5 , rec_axon6, rec_axon7, rec_axon8, rec_axon9, rec_axon10 
+objref rec_somaic, rec_axonic, rec_blebic, rec_somaina, rec_axonina//used to record values of variables
+objref rec_somaik, recaxonik, recblebina, rec_blebik
+objref csna1, cana1, cana2, cana3, cana4, cana5, cana6, cana7, cana8, cana9, cana10
+rect = new Vector()
+recv = new Vector()
+rec_axonv=new Vector()
+rec_axon1=new Vector()
+rec_axon2=new Vector()
+rec_axon3=new Vector()
+rec_axon4=new Vector()
+rec_axon5=new Vector()
+rec_axon6=new Vector()
+rec_axon7=new Vector()
+rec_axon8=new Vector()
+rec_axon9=new Vector()
+rec_axon10=new Vector()
+
+rec_somaic=new Vector()
+rec_axonic=new Vector()
+rec_somaina=new Vector()
+rec_axonina=new Vector()
+rec_somaik=new Vector()
+recaxonik=new Vector()
+
+
+objref savdata //used for saving file
+savdata = new File()  //savdata is a file pointer
+savdata.wopen("neuron_soma.dat")  //open a file with a defined name to save data
+
+//objref savdata1 //used for saving file
+//savdata1 = new File()  //savdata is a file pointer
+//savdata1.wopen("ina.dat")  //open a file with a defined name to save data
+
+soma set_stim1(.5,0,0,50000)
+proc soma_inj() {
+//soma set_stim(0.5,0.,50,200)
+soma set_stim(0.5,0.1,50,250)
+
+//recv.record(&axon.v(0))   //put value of soma.v to recv
+recv.record(&soma.v(0.5))   //put value of soma.v to recv
+rect.record(&t)             //put value of t to rect 
+rec_axon1.record(&axon.v(0.1))
+rec_axon2.record(&axon.v(0.2))
+rec_axon3.record(&axon.v(0.3))
+rec_axon4.record(&axon.v(0.4))
+rec_axon5.record(&axon.v(0.5))
+rec_axon6.record(&axon.v(0.6))
+rec_axon7.record(&axon.v(0.7))
+rec_axon8.record(&axon.v(0.8))
+rec_axon9.record(&axon.v(0.9))
+rec_axon10.record(&axon.v(1))
+
+rec_somaic.record(&soma.i_cap(0.5))
+rec_axonic.record(&axon.i_cap(0.9))
+rec_somaina.record(&soma.ina(0.5))
+rec_axonina.record(&axon.ina(0.9))
+rec_somaik.record(&soma.ik(0.5))
+recaxonik.record(&axon.ik(0.9))
+
+
+run() // this is the right position
+
+for i=0,rect.size()-1 {
+savdata.printf("%g %g %g %g %g %g %g %g %g %g %g %g\n", rect.x(i), recv.x(i), rec_axon1.x(i), rec_axon2.x(i), rec_axon3.x(i), rec_axon4.x(i), rec_axon5.x(i), rec_axon6.x(i), rec_axon7.x(i), rec_axon8.x(i), rec_axon9.x(i), rec_axon10.x(i))
+//savdata1.printf("%g %g %g %g %g %g %g %g %g\n", rect.x(i), recv.x(i), rec_axonv.x(i),rec_somaic.x(i),rec_axonic.x(i),rec_somaina.x(i),rec_axonina.x(i),rec_somaik.x(i),recaxonik.x(i))
+}
+
+savdata.close()
+//savdata1.close()
+}
+
+xpanel("Stuart & Sakmann")
+xvalue("stim amp","st.amp")
+xbutton("inject soma","soma_inj()")
+xpanel()
