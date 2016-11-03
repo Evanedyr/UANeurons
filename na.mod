@@ -63,7 +63,7 @@ NEURON {
     THREADSAFE
 	SUFFIX na
 	USEION na READ ena WRITE ina
-	RANGE m, h, gna, gbar
+	RANGE m, h, gna, gbar, ina
 	GLOBAL tha, thi1, thi2, qa, qi, qinf, thinf
 	RANGE minf, hinf, mtau, htau
 	GLOBAL Ra, Rb, Rd, Rg

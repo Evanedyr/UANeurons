@@ -50,7 +50,7 @@ NEURON {
     THREADSAFE
 	SUFFIX kv
 	USEION k READ ek WRITE ik
-	RANGE n, gk, gbar
+	RANGE n, gk, gbar, ik
 	RANGE ninf, ntau
 	GLOBAL Ra, Rb
 	GLOBAL q10, temp, tadj, vmin, vmax
