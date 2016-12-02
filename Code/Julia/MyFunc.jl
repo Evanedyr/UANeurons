@@ -72,7 +72,7 @@ function simulate_ou!(x, N::Int, x0::Float64, Δt::Float64, μ::Float64, σ::Flo
     return x
 end
 
-function evolve_model!(out, ps::Ps, pa::Pa, xs::Xs, xa::Xa, Ipeak::Float64, N, Δt::Float64, t::Float64, tstim::Float64, tstim_dur::Float64, tstimcon::Float64, tstimcon_dur::Float64, Noise::Int, nv, Amp::Float64, Freq::Float64, HTW::Bool, filename::String)
+function evolve_model!(out, ps::Ps, pa::Pa, xs::Xs, xa::Xa, Ipeak::Float64, N, Δt::Float64, t::Float64, tstim::Float64, tstim_dur::Float64, tstimcon::Float64, tstimcon_dur::Float64, Noise::Int, nv, Amp::Float64, Freq::Float64)
     # Noise is 0 for DC current, 1 for DC current with noise, 2 for DC + noise + sine
     # Useful temporary variables are defined and initialised below
     Δms = 0.;    Δhs = 0.;    Δns = 0.;
@@ -142,19 +142,15 @@ function evolve_model!(out, ps::Ps, pa::Pa, xs::Xs, xa::Xa, Ipeak::Float64, N, �
         out[k,3] = t;
         t += Δt;
  end # for
-    if HTW
-      writedlm(filename, 0)
-    end
-    return (t, xs, xa);
 end
 
 
 function FindMax(vec, time, thres::Float64)
   timemax = []
-  valmax = maximum(vec)
-  f(x) = x > thres
-  varranges = find(f, vec)
-  tempvec = vec[varranges]
+  valmax = maximum(vec)		# Find max from somatic Voltage
+  f(x) = x > thres		# Set threshold function with given fixed value
+  varranges = find(f, vec)	# varranges is array of indexes that satisfy condition
+  tempvec = vec[varranges]	
   tempvectime = time[varranges]
   startrange = 1
   for iter in eachindex(varranges)
@@ -163,21 +159,18 @@ function FindMax(vec, time, thres::Float64)
         temprangetime = tempvectime[startrange:iter]
         spacemax = findmax(temprange)
         push!(timemax, temprangetime[spacemax[2]])
-        startrange = iter+1
-        temprange = []
-        temprangetime = []
         break
-      elseif varranges[iter] + 1 != varranges[iter+1]
+      elseif varranges[iter] + 1 != varranges[iter+1]	# If true, we finished the points of the previous spike
         temprange= tempvec[startrange:iter]
         temprangetime = tempvectime[startrange:iter]
         spacemax = findmax(temprange)
         push!(timemax, temprangetime[spacemax[2]])
-        startrange = iter+1
+        startrange = iter+1				# Set new startrange for next spike
         temprange = []
         temprangetime = []
       end
   end
-  return timemax
+  return timemax		# vector of peak occurrence timings
 end
 
 
