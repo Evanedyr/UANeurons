@@ -150,7 +150,7 @@ function FindMax(vec, time, thres::Float64)
   valmax = maximum(vec)		# Find max from somatic Voltage
   f(x) = x > thres		# Set threshold function with given fixed value
   varranges = find(f, vec)	# varranges is array of indexes that satisfy condition
-  tempvec = vec[varranges]	
+  tempvec = vec[varranges]
   tempvectime = time[varranges]
   startrange = 1
   for iter in eachindex(varranges)
@@ -177,4 +177,12 @@ end
 function GetThatHistBoy(vec)
   (nsom, bins, patches)=plt[:hist](vec, 33)
   return nsom, bins
+end
+
+function findIntersect(data, th, init)
+  fOver5(x) = x > th;
+  a = findnext(fOver5, data[:,2], 2);
+  b = a-1;
+  pos = data[b,1] - ((data[b,2]-th)/(data[b,2]-data[a,2]))*(data[b,1]-data[a,1]);
+  return (pos, a);
 end

@@ -4,7 +4,7 @@ addprocs(10)  # Number of processes
 ####################### TIMING VARIABLES ###############################
 const Δt = 0.005;      # integration time step [ms]
 T  = 500_000.;                  # Simulation lifetime [ms]
-N  = Int64(floor(T/Δt));	# Corresponding number of steps		
+N  = Int64(floor(T/Δt));	# Corresponding number of steps
 timema = []
 tstim = 0.;
 tstim_dur = 1_000_000.;
@@ -30,13 +30,14 @@ xa = Xa(pa.Eleak, 0., 1., 0.);  # Let's declare a var of type "Xa" and initialis
 ####################### LOOP VARIABLES ###############################
 std = 0.:100.:1000.
 curr = -200.:1.:200.
+pos_vect = SharedArray(Float64, (length(std),3))
 
 ####################### CODE ###############################
 @sync @parallel for j=1:length(std)
   jj = std[j]
   noisevar = zeros(Float64, N)
 # Starting value, time step, Steady-state mean, Steady-state standard deviation, relaxation time
-  noisevar = simulate_ou!(noisevar, N, 0., Δt, 0., jj, 2.)   
+  noisevar = simulate_ou!(noisevar, N, 0., Δt, 0., jj, 2.)
   allval = zeros(Float64, (length(curr),2))
   for i=1:length(curr)
     ii = curr[i]
@@ -47,6 +48,9 @@ curr = -200.:1.:200.
     allval[i, 2] = (1000.*length(peaktime))/T
   end
   writedlm("FIStd$(jj).txt", allval)
+  (pos_vect[j, 1], init) = findIntersect(allval, 5, 2);
+  (pos_vect[j, 2], init) = findIntersect(allval, 20, init);
+  pos_vect[j, 3] = jj;
 end
 
 rmprocs(workers(), waitfor = 10)
