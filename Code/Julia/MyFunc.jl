@@ -85,24 +85,24 @@ function evolve_model!(out, ps::Ps, pa::Pa, xs::Xs, xa::Xa, Ipeak::Float64, N, �
 
         # External current pulse ------------------------------------------------------------------
         if Noise == 0
-          if (tstim   <= (k*Δt) < (tstim + tstim_dur))
+          if (tstim   <= (k*Δt) <= (tstim + tstim_dur))
               Iext = Ipeak;
           else
               Iext = 0.;
           end
         elseif Noise == 1
-          if (tstim   <= (k*Δt) < (tstim + tstim_dur))
+          if (tstim   <= (k*Δt) <= (tstim + tstim_dur))
               Iext = Ipeak + nv[counter];
               counter += 1
           else
               Iext = 0.;
           end
         elseif Noise == 2
-          if (tstim   <= (k*Δt) < (tstim + tstim_dur))
+          if (tstim   <= (k*Δt) <= (tstim + tstim_dur))
               # nv.x = simulate_ou!(nv.x, nv.Δt, nv.μ, nv.σ, nv.τ)
               Iext = Ipeak + nv[counter] + Amp * sin(2 * π * Freq * k * Δt);
               counter += 1
-          elseif (tstimcon <= (k * Δt) < (tstimcon + tstimcon_dur))
+          elseif (tstimcon <= (k * Δt) <= (tstimcon + tstimcon_dur))
               Iext = Ipeak
           else
               Iext = 0.;
@@ -180,9 +180,65 @@ function GetThatHistBoy(vec)
 end
 
 function findIntersect(data, th, init)
-  fOver5(x) = x > th;
-  a = findnext(fOver5, data[:,2], 2);
+  f(x) = x > th;
+  a = findnext(f, data[:,2], 2);
   b = a-1;
   pos = data[b,1] - ((data[b,2]-th)/(data[b,2]-data[a,2]))*(data[b,1]-data[a,1]);
   return (pos, a);
+end
+
+function fit_hist(xvalues, yvalues, freq)
+  amp = maximum(yvalues) - minimum(yvalues);
+  model(xvalues, par) = par[1]+par[2]*sin(xvalues .* 2 * pi * par[3] + par[4])
+  values = curve_fit(model, xvalues, yvalues, [mean(yvalues), amp, freq, 0])
+  Mag = values.param[2]/values.param[1];
+  return Mag;
+end
+
+function findpeaks(data)
+  global th = mean(data)+std(data)*4; #threshold as 2 times the SD
+  f1(x) = x > th
+  f2(x) = x < th
+  isUnder = true;
+  up = [];
+  down = [];
+  i = 1;
+  while (i!=0)
+    if (isUnder)
+      val = findnext(f1, data, i+1);
+      if (val!=0)
+        push!(up, val)
+	i = val;
+        isUnder = false;
+      else
+        break
+      end
+    else
+      val = findnext(f2, data, i+1);
+      if (val!=0)
+        push!(down,val)
+	i = val;
+        isUnder = true;
+      else
+        break
+      end
+    end
+  end
+  peak = [];
+  for i=1:length(down)
+    val= indmax(data[up[i]:down[i]]);
+    push!(peak, up[i]+val-1);
+  end
+  return peak;
+end
+
+function DefinitelyNotAnHist(range, data, xvalues, yvalues)
+  step = range/33;
+  k = 1
+  for j in step:step:range
+    yvalues[k] += length(find(j-step .< data .< j))
+    xvalues[k] = j-step/2;
+    k += 1;
+  end
+  return xvalues, yvalues
 end
