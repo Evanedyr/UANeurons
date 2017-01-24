@@ -6,6 +6,7 @@ extern int nrn_nobanner_;
 extern void _Ca_reg(void);
 extern void _CaDynamics_E2_reg(void);
 extern void _Ca_LVAst_reg(void);
+extern void _IClampNoiseAndSine_reg(void);
 extern void _Ih_reg(void);
 extern void _Im_reg(void);
 extern void _K_Pst_reg(void);
@@ -26,6 +27,7 @@ void modl_reg(){
     fprintf(stderr," ./mechanisms//Ca.mod");
     fprintf(stderr," ./mechanisms//CaDynamics_E2.mod");
     fprintf(stderr," ./mechanisms//Ca_LVAst.mod");
+    fprintf(stderr," ./mechanisms//IClampNoiseAndSine.mod");
     fprintf(stderr," ./mechanisms//Ih.mod");
     fprintf(stderr," ./mechanisms//Im.mod");
     fprintf(stderr," ./mechanisms//K_Pst.mod");
@@ -43,6 +45,7 @@ void modl_reg(){
   _Ca_reg();
   _CaDynamics_E2_reg();
   _Ca_LVAst_reg();
+  _IClampNoiseAndSine_reg();
   _Ih_reg();
   _Im_reg();
   _K_Pst_reg();

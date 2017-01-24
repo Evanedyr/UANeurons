@@ -5,6 +5,14 @@ from matplotlib import pyplot
 import numpy
 from math import sin, cos, pi
 
+def init_simulation():
+    """Initialise simulation environment"""
+
+    h.load_file("stdrun.hoc")
+    h.load_file("import3d.hoc")
+
+    print('Loading constants')
+    h.load_file('constants.hoc')
 
 def create_cell(add_synapses=True):
     """Create the cell model"""
@@ -33,7 +41,7 @@ def attach_noise_sin_clamp(cell, delay, dur, offset, amp, freq, dt, tau, sigma, 
     :param sigma: The standard deviation of the normrand.
     :param loc: Location on the dendrite where the stimulus is placed.
     """
-    stim = h.IClampNoiseSin(cell(loc))
+    stim = h.IClampNoiseSin(cell.soma[0](loc))
     stim.delay = delay
     stim.dur = dur
     stim.std = sigma
@@ -47,18 +55,21 @@ def attach_noise_sin_clamp(cell, delay, dur, offset, amp, freq, dt, tau, sigma, 
 
 def special_run(stim, cell, simdur, dt, init, cel):
     soma_v_vec = h.Vector()
-    h_vec = h.Vector()
     i_inj_vec = h.Vector()
-    n_vec = h.Vector()
     t_vec = h.Vector()
-    soma_v_vec.record(cell.soma(0.5)._ref_v)
-    h_vec.record(cell.soma(0.5).na._ref_h)
+    soma_v_vec.record(cell.soma[0](0.5)._ref_v)
     i_inj_vec.record(stim._ref_i)
-    n_vec.record(cell.soma(0.5).kv._ref_n)
     t_vec.record(h._ref_t)
     h.dt = dt
     h.tstop = simdur
     h.v_init = init
     h.celsius = cel
     h.run()
-    return soma_v_vec, h_vec, i_inj_vec, n_vec, t_vec
+    return soma_v_vec, i_inj_vec, t_vec
+
+def main(curr, std, dt, tau, mu, delay, dur):
+    init_simulation()
+    cell = create_cell(False)
+    stim = attach_noise_sin_clamp(cell, delay, dur, curr, 0., 0., dt, tau, std, mu, 0.5)
+    soma_vec, i_inj_vec, t_vec = special_run(stim, cell, dur, dt, -70, 37)
+    return soma_vec, i_inj_vec, t_vec
